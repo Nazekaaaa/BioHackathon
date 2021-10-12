@@ -1,1 +1,89 @@
+{
+  "name": "project_el_nino",
+  "version": "1.0",
+  "manifest_version": 2,
+  "permissions": [
+    "declarativeContent",
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "background": {
+    "scripts": [
+      "scripts/background.js"
+    ],
+    "persistent": false
+  },
+  "page_action": {
+    "default_popup": "popup.html"
+  }
+  
+}
+document.body.addEventListener('click', function(e) {
+    let target = e.target;
+    if (target.nodeName === 'BUTTON') {
+        if (target.name === 'reset') {
+            chrome.storage.sync.clear(function(data){
+                chrome.tabs.query({active: true, currentWindow: true}, function(tab) {
+                    chrome.tabs.reload(tab[0].id);
+                });
+            });
+        }
+        changeBG(target.name);
+    }
+    e.stopPropagation();
+});
+function changeBG(color) {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        chrome.tabs.executeScript(
+            tabs[0].id,
+            {code: 'document.body.style.backgroundColor = "#' + color + '";'}
+        );
+    });
+    var el = document.getElementsByTagName("*");
+    for (var i=0; i < el.length; i++) 
+    {    
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.executeScript(
+                tabs[0].id,
+                {code: 'document.body.style.color = "#' + color + '";'}
+            );
+        });
+        
+    }
+     storeColor(color);
+               
+}
 
+
+function storeColor(bgColor) {
+    chrome.storage.sync.set({currentColor: bgColor});
+}
+'use strict';
+
+chrome.tabs.onUpdated.addListener(function(tabId,changeInfo,tab){
+	if (changeInfo.status === 'complete') {
+		chrome.storage.sync.get("currentColor", function(data) {
+			if (data["currentColor"]) {
+		        chrome.tabs.executeScript(
+		            tabId,
+		            {code: 'document.body.style.backgroundColor = "#' + data["currentColor"] + '";'}
+		        );
+	        }
+		});
+	}
+});
+
+
+chrome.runtime.onInstalled.addListener(function() {
+
+	chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
+		chrome.declarativeContent.onPageChanged.addRules([{
+			conditions: [new chrome.declarativeContent.PageStateMatcher({
+				
+			})
+			],
+			actions: [new chrome.declarativeContent.ShowPageAction()]
+		}]);
+	});
+});
